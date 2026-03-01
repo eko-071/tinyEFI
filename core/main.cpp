@@ -7,8 +7,9 @@
 void printUsage()
 {
   std::cout << "\nUsage:\n";
-  std::cout << "  tinyefi --list      List EFI boot entries" << "\n";
-  std::cout << "  tinyefi --current   Show current EFI boot entry\n\n";
+  std::cout << "  tinyefi --list            List EFI boot entries\n";
+  std::cout << "  tinyefi --current         Show current EFI boot entry\n";
+  std::cout << "  tinyefi --next <BootID>   Set boot entry for next boot only\n\n";
 }
 
 int listCmd()
@@ -64,6 +65,41 @@ int currentCmd()
   return 0;
 }
 
+int nextCmd(const std::string &id)
+{
+  try
+  {
+    // Validate the ID exists in boot order
+    EFIVarReader reader;
+    std::vector<std::string> order = reader.readBootOrder();
+    bool found = false;
+    for (const auto &entry : order)
+    {
+      if (entry == id)
+      {
+        found = true;
+        break;
+      }
+    }
+    if (!found)
+    {
+      std::cerr << "Error: Boot entry " << id << " not found in boot order\n";
+      return 1;
+    }
+
+    EFIVarReader::writeBootNext(id);
+    std::string desc = reader.readBootDescription(id);
+    std::cout << "BootNext set to " << id << " (" << desc << ")\n";
+    std::cout << "This entry will be used for the next boot only.\n";
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "Error: " << e.what() << "\n";
+    return 1;
+  }
+  return 0;
+}
+
 int main(int argc, char *argv[])
 {
   if (argc < 2)
@@ -78,6 +114,15 @@ int main(int argc, char *argv[])
     return listCmd();
   else if (command == "--current")
     return currentCmd();
+  else if (command == "--next")
+  {
+    if (argc < 3)
+    {
+      std::cerr << "Error: --next requires a boot entry ID\n";
+      return 1;
+    }
+    return nextCmd(argv[2]);
+  }
   else
   {
     printUsage();
