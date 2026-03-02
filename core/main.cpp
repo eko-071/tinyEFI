@@ -1,4 +1,5 @@
 #include "efivar_reader.h"
+#include "efivar_writer.h"
 #include <iostream>
 #include <iomanip>
 #include <vector>
@@ -87,7 +88,7 @@ int nextCmd(const std::string &id)
       return 1;
     }
 
-    EFIVarReader::writeBootNext(id);
+    EFIVarWriter::writeBootNext(id);
     std::string desc = reader.readBootDescription(id);
     std::cout << "BootNext set to " << id << " (" << desc << ")\n";
     std::cout << "This entry will be used for the next boot only.\n";

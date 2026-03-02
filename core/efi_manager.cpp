@@ -5,7 +5,6 @@ BootData EFIManager::getBootData()
 {
 
   BootData data;
-
   data.order = EFIVarReader::readBootOrder();
   data.current = EFIVarReader::readBootCurrent();
 

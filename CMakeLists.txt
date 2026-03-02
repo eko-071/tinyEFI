@@ -9,4 +9,5 @@ add_executable(tinyefi
     core/efi_manager.cpp
     core/efivar_reader.cpp
     core/utf16.cpp
+    core/efivar_writer.cpp
 )
