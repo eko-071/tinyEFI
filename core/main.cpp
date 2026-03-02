@@ -101,6 +101,28 @@ int nextCmd(const std::string &id)
   return 0;
 }
 
+int renameCmd(const std::string &id, const std::string &newName)
+{
+  EFIVarReader reader;
+  std::vector<std::string> order = reader.readBootOrder();
+  bool found = false;
+  for (const auto &entry : order)
+  {
+    if (entry == id)
+    {
+      found = true;
+      break;
+    }
+  }
+  if (!found)
+  {
+    std::cerr << "Error: Boot entry " << id << " not found in boot order\n";
+    return 1;
+  }
+  EFIVarWriter::renameBootEntry(id, newName);
+  return 0;
+}
+
 int main(int argc, char *argv[])
 {
   if (argc < 2)
@@ -123,6 +145,20 @@ int main(int argc, char *argv[])
       return 1;
     }
     return nextCmd(argv[2]);
+  }
+  else if (command == "--rename")
+  {
+    if (argc < 3)
+    {
+      std::cerr << "Error: --rename requires a boot entry ID\n";
+      return 1;
+    }
+    else if (argc < 4)
+    {
+      std::cerr << "Error: --rename requires new description\n";
+      return 1;
+    }
+    return renameCmd(argv[2], argv[3]);
   }
   else
   {
