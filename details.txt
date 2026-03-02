@@ -1,0 +1,7 @@
+Pathnames
+
+Boot once	BootNext	/sys/.../BootNext-GUID
+Rename	Boot000X	/sys/.../Boot000X-GUID
+Delete	Boot000X	/sys/.../Boot000X-GUID
+Change order	BootOrder	/sys/.../BootOrder-GUID
+Create	Boot000X	/sys/.../Boot000X-GUID

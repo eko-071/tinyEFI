@@ -1,12 +1,16 @@
 #include "utf16.h"
+#include "efivar_writer.h"
+#include <iostream>
+#include <filesystem>
 #include <vector>
 #include <sstream>
-#include <filesystem>
 #include <fstream>
 #include <stdexcept>
 #include <cstdint>
 #include <cstdlib>
-#include "efivar_writer.h"
+#include <cstring>
+
+#define DESCRIPTION_OFFSET 10
 
 constexpr const char *EFI_PATH = "/sys/firmware/efi/efivars/";
 constexpr const char *EFI_GUID = "8be4df61-93ca-11d2-aa0d-00e098032b8c";
@@ -40,4 +44,69 @@ void EFIVarWriter::writeBootNext(const std::string &id)
 
   chattr_cmd = "chattr +i " + path + " 2>/dev/null";
   system(chattr_cmd.c_str());
+}
+
+void EFIVarWriter::renameBootEntry(const std::string &id, const std::string &newName)
+{
+  std::string path = std::string(EFI_PATH) + "Boot" + id + "-" + EFI_GUID;
+
+  // turn off immutable flag
+  std::string chattr_cmd = "chattr -i " + path + " 2>/dev/null";
+  system(chattr_cmd.c_str());
+
+  std::ifstream file(path, std::ios::binary);
+  if (!file)
+    throw std::runtime_error("Failed to load efi variable. Are you running as root?");
+
+  std::vector<uint8_t> data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  file.close();
+
+  if (data.size() < DESCRIPTION_OFFSET)
+    throw std::runtime_error("Invalid EFI variable format");
+
+  std::vector<uint8_t> newData;
+  newData.insert(newData.end(), data.begin(), data.begin() + DESCRIPTION_OFFSET);
+
+  size_t offset = DESCRIPTION_OFFSET;
+  bool found = false;
+
+  while (offset + 1 < data.size())
+  {
+    if (data[offset] == 0x00 && data[offset + 1] == 0x00)
+    {
+      offset += 2;
+      found = true;
+      break;
+    }
+    offset += 2;
+  }
+
+  if (!found)
+    throw std::runtime_error("Failed to find description terminator");
+
+  std::u16string utf16name = utf8_to_utf16(newName);
+
+  for (char16_t c : utf16name)
+  {
+    newData.push_back(c & 0xFF);
+    newData.push_back((c >> 8) & 0xFF);
+  }
+
+  newData.push_back(0x00);
+  newData.push_back(0x00);
+
+  // append remaining things after description
+  newData.insert(newData.end(), data.begin() + offset, data.end());
+
+  std::ofstream out(path, std::ios::binary | std::ios::trunc);
+  if (!out)
+    throw std::runtime_error("Failed to write efi variable");
+
+  out.write(reinterpret_cast<const char *>(newData.data()), newData.size());
+  out.close();
+
+  // turn on immutable flag
+  chattr_cmd = "chattr +i " + path + " 2>/dev/null";
+  system(chattr_cmd.c_str());
+  std::cout << "Success\n";
 }

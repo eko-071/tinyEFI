@@ -7,3 +7,9 @@ std::string utf16_to_utf8(const std::u16string &input)
   std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
   return convert.to_bytes(input);
 }
+
+std::u16string utf8_to_utf16(const std::string &input)
+{
+  std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+  return convert.from_bytes(input);
+}
