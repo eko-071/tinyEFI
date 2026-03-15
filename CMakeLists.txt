@@ -10,5 +10,5 @@ add_executable(tinyefi
     core/efivar_reader.cpp
     core/utf16.cpp
     core/efivar_writer.cpp
-    shared/utils.cpp
+    core/utils.cpp
 )
