@@ -123,6 +123,38 @@ int renameCmd(const std::string &id, const std::string &newName)
   return 0;
 }
 
+int setCmd(const std::string &id)
+{
+  try
+  {
+    EFIVarReader reader;
+    std::vector<std::string> order = reader.readBootOrder();
+    bool found = false;
+    for (const auto &entry : order)
+    {
+      if (entry == id)
+      {
+        found = true;
+        break;
+      }
+    }
+    if (!found)
+    {
+      std::cerr << "Error: Boot entry " << id << " not found in boot order\n";
+      return 1;
+    }
+    EFIVarWriter::setBootOrderFirst(id);
+    std::string desc = reader.readBootDescription(id);
+    std::cout << "Boot entry " << id << " (" << desc << ") " << "is now the default boot entry.\n";
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "Error: " << e.what() << "\n";
+    return 1;
+  }
+  return 0;
+}
+
 int main(int argc, char *argv[])
 {
   if (argc < 2)
@@ -130,9 +162,7 @@ int main(int argc, char *argv[])
     printUsage();
     return 1;
   }
-
   std::string command = argv[1];
-
   if (command == "--list")
     return listCmd();
   else if (command == "--current")
@@ -159,6 +189,15 @@ int main(int argc, char *argv[])
       return 1;
     }
     return renameCmd(argv[2], argv[3]);
+  }
+  else if (command == "--set")
+  {
+    if (argc < 3)
+    {
+      std::cerr << "Error: --set requires a boot entry ID\n";
+      return 1;
+    }
+    return setCmd(argv[2]);
   }
   else
   {
