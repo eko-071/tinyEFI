@@ -1,5 +1,8 @@
 #include "utf16.h"
 #include "efivar_writer.h"
+#include "efivar_reader.h"
+#include "utils.h"
+
 #include <iostream>
 #include <filesystem>
 #include <vector>
@@ -109,4 +112,37 @@ void EFIVarWriter::renameBootEntry(const std::string &id, const std::string &new
   chattr_cmd = "chattr +i " + path + " 2>/dev/null";
   system(chattr_cmd.c_str());
   std::cout << "Success\n";
+}
+
+void EFIVarWriter::setBootOrderFirst(const std::string &id)
+{
+  EFIVarReader reader;
+  auto order = reader.readBootOrder();
+  if (std::find(order.begin(), order.end(), id) == order.end())
+    throw std::runtime_error("Boot ID not found in BootOrder");
+  order.erase(std::remove(order.begin(), order.end(), id), order.end());
+  order.insert(order.begin(), id);
+
+  std::string path = (std::string)EFI_PATH + "BootOrder" + "-" + EFI_GUID;
+  Utils::flagDown(path);
+  std::vector<uint8_t> data;
+
+  data.push_back(0x07);
+  data.push_back(0x00);
+  data.push_back(0x00);
+  data.push_back(0x00);
+
+  for (const auto &entry : order)
+  {
+    uint16_t value = Utils::hexToU16(entry);
+    data.push_back(value & 0xFF);
+    data.push_back((value >> 8) & 0xFF);
+  }
+
+  std::ofstream file(path, std::ios::binary | std::ios::trunc);
+  if (!file)
+    throw std::runtime_error("Failed to write bootorder. Run as root!");
+  file.write(reinterpret_cast<const char *>(data.data()), data.size());
+  file.close();
+  Utils::flagUp(path);
 }
