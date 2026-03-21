@@ -11,8 +11,34 @@ cmake ..
 make
 ```
 
-Usage for listing out entries
+Usage  
+
+Listing out entries
 
 ```bash
 sudo ./tinyEFI --list
+```
+
+Set a boot entry just for next boot
+
+```bash
+sudo ./tinyefi --next <BOOTENTRYID>
+```
+
+Shows the current boot entry 
+
+```bash
+sudo ./tinyefi --current
+```
+
+Change the description of a boot entry
+
+```bash
+sudo ./tinyefi --rename <BOOTENTRYID> <DESCRIPTION>
+```
+
+Bring a boot entry to the top
+
+```bash
+sudo ./tinyefi --set <BOOTENTRYID>
 ```
