@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <vector>
 #include <string>
+#include <sstream>
 
 void printUsage()
 {
@@ -11,7 +12,8 @@ void printUsage()
   std::cout << "  tinyefi --list            List EFI boot entries\n";
   std::cout << "  tinyefi --current         Show current EFI boot entry\n";
   std::cout << "  tinyefi --next <BootID>   Set boot entry for next boot only\n";
-  std::cout << "  tinyefi --delete <BootID> Delete a boot entry\n\n";
+  std::cout << "  tinyefi --delete <BootID> Delete a boot entry\n";
+  std::cout << "  tinyefi --set-order <IDs> Set a custom boot order (comma-separated)\n\n";
 }
 
 int listCmd()
@@ -186,6 +188,49 @@ int deleteCmd(const std::string &id)
   return 0;
 }
 
+int setOrderCmd(const std::string &orderStr)
+{
+  try
+  {
+    std::vector<std::string> newOrder;
+    std::stringstream ss(orderStr);
+    std::string item;
+    while (std::getline(ss, item, ','))
+    {
+      newOrder.push_back(item);
+    }
+
+    EFIVarReader reader;
+    std::vector<std::string> currentOrder = reader.readBootOrder();
+    for (const auto &id : newOrder)
+    {
+      bool found = false;
+      for (const auto &entry : currentOrder)
+      {
+        if (entry == id)
+        {
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+      {
+        std::cerr << "Error: Boot entry " << id << " not found in current boot order. Aborting.\n";
+        return 1;
+      }
+    }
+
+    EFIVarWriter::writeBootOrder(newOrder);
+    std::cout << "Successfully set new boot order.\n";
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "Error: " << e.what() << "\n";
+    return 1;
+  }
+  return 0;
+}
+
 int main(int argc, char *argv[])
 {
   if (argc < 2)
@@ -238,6 +283,15 @@ int main(int argc, char *argv[])
       return 1;
     }
     return deleteCmd(argv[2]);
+  }
+  else if (command == "--set-order")
+  {
+    if (argc < 3)
+    {
+      std::cerr << "Error: --set-order requires a comma-separated list of boot entry IDs\n";
+      return 1;
+    }
+    return setOrderCmd(argv[2]);
   }
   else
   {
