@@ -146,3 +146,46 @@ void EFIVarWriter::setBootOrderFirst(const std::string &id)
   file.close();
   Utils::flagUp(path);
 }
+
+void EFIVarWriter::deleteBootEntry(const std::string &id)
+{
+  // 1. Remove from boot order
+  EFIVarReader reader;
+  auto order = reader.readBootOrder();
+  if (std::find(order.begin(), order.end(), id) == order.end())
+    throw std::runtime_error("Boot ID not found in BootOrder");
+  order.erase(std::remove(order.begin(), order.end(), id), order.end());
+
+  std::string bootOrderPath = (std::string)EFI_PATH + "BootOrder" + "-" + EFI_GUID;
+  Utils::flagDown(bootOrderPath);
+  std::vector<uint8_t> data;
+
+  data.push_back(0x07);
+  data.push_back(0x00);
+  data.push_back(0x00);
+  data.push_back(0x00);
+
+  for (const auto &entry : order)
+  {
+    uint16_t value = Utils::hexToU16(entry);
+    data.push_back(value & 0xFF);
+    data.push_back((value >> 8) & 0xFF);
+  }
+
+  std::ofstream file(bootOrderPath, std::ios::binary | std::ios::trunc);
+  if (!file)
+    throw std::runtime_error("Failed to write bootorder. Run as root!");
+  file.write(reinterpret_cast<const char *>(data.data()), data.size());
+  file.close();
+  Utils::flagUp(bootOrderPath);
+
+  // 2. Delete the boot entry variable
+  std::string bootEntryPath = std::string(EFI_PATH) + "Boot" + id + "-" + EFI_GUID;
+  Utils::flagDown(bootEntryPath);
+  if (!std::filesystem::remove(bootEntryPath))
+  {
+    Utils::flagUp(bootEntryPath);
+    throw std::runtime_error("Failed to delete boot entry file: " + bootEntryPath);
+  }
+  std::cout << "Successfully deleted boot entry " << id << std::endl;
+}

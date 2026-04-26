@@ -10,7 +10,8 @@ void printUsage()
   std::cout << "\nUsage:\n";
   std::cout << "  tinyefi --list            List EFI boot entries\n";
   std::cout << "  tinyefi --current         Show current EFI boot entry\n";
-  std::cout << "  tinyefi --next <BootID>   Set boot entry for next boot only\n\n";
+  std::cout << "  tinyefi --next <BootID>   Set boot entry for next boot only\n";
+  std::cout << "  tinyefi --delete <BootID> Delete a boot entry\n\n";
 }
 
 int listCmd()
@@ -155,6 +156,36 @@ int setCmd(const std::string &id)
   return 0;
 }
 
+int deleteCmd(const std::string &id)
+{
+  try
+  {
+    EFIVarReader reader;
+    std::vector<std::string> order = reader.readBootOrder();
+    bool found = false;
+    for (const auto &entry : order)
+    {
+      if (entry == id)
+      {
+        found = true;
+        break;
+      }
+    }
+    if (!found)
+    {
+      std::cerr << "Error: Boot entry " << id << " not found in boot order\n";
+      return 1;
+    }
+    EFIVarWriter::deleteBootEntry(id);
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "Error: " << e.what() << "\n";
+    return 1;
+  }
+  return 0;
+}
+
 int main(int argc, char *argv[])
 {
   if (argc < 2)
@@ -198,6 +229,15 @@ int main(int argc, char *argv[])
       return 1;
     }
     return setCmd(argv[2]);
+  }
+  else if (command == "--delete")
+  {
+    if (argc < 3)
+    {
+      std::cerr << "Error: --delete requires a boot entry ID\n";
+      return 1;
+    }
+    return deleteCmd(argv[2]);
   }
   else
   {
