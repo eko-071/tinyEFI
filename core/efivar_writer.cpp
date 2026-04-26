@@ -189,3 +189,29 @@ void EFIVarWriter::deleteBootEntry(const std::string &id)
   }
   std::cout << "Successfully deleted boot entry " << id << std::endl;
 }
+
+void EFIVarWriter::writeBootOrder(const std::vector<std::string> &order)
+{
+  std::string path = (std::string)EFI_PATH + "BootOrder" + "-" + EFI_GUID;
+  Utils::flagDown(path);
+  std::vector<uint8_t> data;
+
+  data.push_back(0x07);
+  data.push_back(0x00);
+  data.push_back(0x00);
+  data.push_back(0x00);
+
+  for (const auto &entry : order)
+  {
+    uint16_t value = Utils::hexToU16(entry);
+    data.push_back(value & 0xFF);
+    data.push_back((value >> 8) & 0xFF);
+  }
+
+  std::ofstream file(path, std::ios::binary | std::ios::trunc);
+  if (!file)
+    throw std::runtime_error("Failed to write bootorder. Run as root!");
+  file.write(reinterpret_cast<const char *>(data.data()), data.size());
+  file.close();
+  Utils::flagUp(path);
+}
